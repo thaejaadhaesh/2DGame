@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neon Traffic Rider</title>
+<style>
+:root{
+  --bg:#0a0f1f;--panel:#121a31;--panel2:#182443;--text:#eef5ff;--muted:#9fb0d2;
+  --accent:#00e5ff;--accent2:#ff3d81;--good:#7cff6b;--warn:#ffd44a;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:
+radial-gradient(circle at top,#172246 0,#0a0f1f 55%,#060912 100%);color:var(--text);overflow:hidden}
+button,input{font:inherit}
+#app{width:100vw;height:100vh;display:grid;place-items:center}
+.shell{width:min(1180px,100vw);height:min(760px,100vh);display:grid;grid-template-columns:1fr 330px;
+background:#090e1b;border:1px solid #27365d;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px #0009}
+.gameWrap{position:relative;background:#050811;min-width:0}
+canvas{width:100%;height:100%;display:block;background:#101827}
+.sidebar{padding:18px;background:linear-gradient(180deg,#121a31,#0b1122);border-left:1px solid #26365c;overflow:auto}
+.brand{font-weight:900;font-size:24px;letter-spacing:.6px}
+.brand span{color:var(--accent)}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.card{background:linear-gradient(180deg,#182443,#111a31);border:1px solid #2b3e68;border-radius:18px;padding:14px;margin-top:14px}
+.statrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin:7px 0;color:#cfe1ff}
+.statrow b{color:white}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+button{border:0;border-radius:12px;padding:10px 12px;background:#25375f;color:#fff;cursor:pointer;font-weight:800;transition:.15s}
+button:hover{transform:translateY(-1px);filter:brightness(1.1)}
+.primary{background:linear-gradient(90deg,#00c9ff,#6a5cff)}
+.pink{background:linear-gradient(90deg,#ff3d81,#ff7a3d)}
+.green{background:linear-gradient(90deg,#29d66b,#11c7a3)}
+.small{padding:8px;font-size:12px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.tab.active{background:#00c9ff;color:#06101a}
+.panel{display:none}.panel.active{display:block}
+.upgrade{margin:12px 0}
+.upgrade .top{display:flex;justify-content:space-between;font-size:13px}
+.bar{height:8px;border-radius:999px;background:#0b1222;overflow:hidden;margin-top:6px;border:1px solid #26385f}
+.fill{height:100%;background:linear-gradient(90deg,#00e5ff,#765dff)}
+.range{width:100%;accent-color:#00d5ff}
+.colors{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:8px}
+.swatch{height:30px;border-radius:10px;border:2px solid #ffffff22;cursor:pointer}
+.swatch.sel{outline:2px solid white}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#050916bb;backdrop-filter:blur(7px);z-index:5}
+.modal{width:min(520px,88%);padding:28px;border-radius:22px;background:linear-gradient(180deg,#152143,#0c1328);border:1px solid #3a5187;box-shadow:0 20px 50px #0008}
+.modal h1{margin:0;font-size:42px;line-height:1}
+.modal h1 span{color:#00e5ff}
+.modal p{color:#b9c9e8;line-height:1.55}
+.kbd{padding:4px 7px;border-radius:7px;background:#243355;border:1px solid #435a8b;font-weight:800}
+.hud{position:absolute;left:16px;top:14px;right:16px;display:flex;justify-content:space-between;pointer-events:none;z-index:2}
+.hudbox{background:#07111dcc;border:1px solid #2c4268;border-radius:14px;padding:8px 12px;font-weight:900}
+#toast{position:absolute;left:50%;top:80px;transform:translateX(-50%);background:#07111ddd;border:1px solid #435f93;border-radius:12px;padding:9px 14px;opacity:0;transition:.25s;z-index:6;pointer-events:none}
+.mobileControls{display:none;position:absolute;inset:auto 12px 12px 12px;z-index:3;justify-content:space-between}
+.pad{display:grid;grid-template-columns:repeat(3,54px);gap:7px}
+.pad button{height:54px;border-radius:16px;background:#0a1427cc;border:1px solid #3a527f}
+@media(max-width:900px){
+ .shell{grid-template-columns:1fr;height:100vh;border-radius:0}
+ .sidebar{position:absolute;right:8px;top:8px;width:280px;max-height:55vh;border:1px solid #2c416b;border-radius:16px;z-index:8}
+ .mobileControls{display:flex}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="shell">
+    <div class="gameWrap">
+      <canvas id="game" width="840" height="760"></canvas>
+      <div class="hud">
+        <div class="hudbox"><span id="speed">0</span> km/h</div>
+        <div class="hudbox">🏁 <span id="score">0</span> &nbsp; 🪙 <span id="runCoins">0</span></div>
+      </div>
+      <div id="toast">Perfect overtake +25</div>
+      <div id="overlay" class="overlay">
+        <div class="modal">
+          <div style="font-size:13px;color:#8fb7ff;font-weight:900;letter-spacing:2px">ARCADE TRAFFIC RACER</div>
+          <h1>NEON <span>RIDER</span></h1>
+          <p>Thread through dense highway traffic, chain close overtakes, use nitro, and build a faster custom bike in the garage.</p>
+          <p><span class="kbd">W / ↑</span> accelerate &nbsp; <span class="kbd">S / ↓</span> brake &nbsp; <span class="kbd">A D / ← →</span> steer &nbsp; <span class="kbd">Shift</span> nitro</p>
+          <div class="btnrow"><button class="primary" id="startBtn">START RUN</button><button id="closeGarageBtn">GARAGE READY</button></div>
+        </div>
+      </div>
+      <div class="mobileControls">
+        <div class="pad"><button data-key="left">◀</button><button data-key="brake">▼</button><button data-key="right">▶</button></div>
+        <div class="pad"><button data-key="nitro">⚡</button><button data-key="gas">▲</button><button data-key="gas">GO</button></div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="brand">NEON <span>RIDER</span></div>
+      <div class="sub">Highway traffic racing • build 1.0</div>
+
+      <div class="card">
+        <div class="statrow"><span>Wallet</span><b>🪙 <span id="wallet">0</span></b></div>
+        <div class="statrow"><span>Best score</span><b id="best">0</b></div>
+        <div class="statrow"><span>Bike</span><b id="bikeName">Volt 400</b></div>
+        <div class="btnrow"><button class="primary" id="restartBtn">NEW RUN</button><button class="pink" id="nitroBtn">NITRO</button></div>
+        <button id="cameraBtn" style="width:100%;margin-top:8px">CAMERA: THIRD PERSON</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="upgrade">UPGRADE</button>
+        <button class="tab" data-tab="tune">TUNE</button>
+        <button class="tab" data-tab="style">STYLE</button>
+      </div>
+
+      <div class="panel active" id="upgrade">
+        <div class="card">
+          <div class="upgrade">
+            <div class="top"><b>Engine</b><span>Lv <span id="engineLv">1</span>/5</span></div>
+            <div class="bar"><div class="fill" id="engineBar"></div></div>
+            <button class="green small" data-up="engine" style="width:100%;margin-top:8px">Upgrade • <span id="engineCost"></span> coins</button>
+          </div>
+          <div class="upgrade">
+            <div class="top"><b>Handling</b><span>Lv <span id="handlingLv">1</span>/5</span></div>
+            <div class="bar"><div class="fill" id="handlingBar"></div></div>
+            <button class="green small" data-up="handling" style="width:100%;margin-top:8px">Upgrade • <span id="handlingCost"></span> coins</button>
+          </div>
+          <div class="upgrade">
+            <div class="top"><b>Brakes</b><span>Lv <span id="brakesLv">1</span>/5</span></div>
+            <div class="bar"><div class="fill" id="brakesBar"></div></div>
+            <button class="green small" data-up="brakes" style="width:100%;margin-top:8px">Upgrade • <span id="brakesCost"></span> coins</button>
+          </div>
+          <div class="upgrade">
+            <div class="top"><b>Nitro</b><span>Lv <span id="nitroLv">1</span>/5</span></div>
+            <div class="bar"><div class="fill" id="nitroBar"></div></div>
+            <button class="green small" data-up="nitro" style="width:100%;margin-top:8px">Upgrade • <span id="nitroCost"></span> coins</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="tune">
+        <div class="card">
+          <div class="upgrade"><div class="top"><b>Steering sensitivity</b><span id="steerVal"></span></div><input id="steerTune" class="range" type="range" min="70" max="130" value="100"></div>
+          <div class="upgrade"><div class="top"><b>Acceleration bias</b><span id="accelVal"></span></div><input id="accelTune" class="range" type="range" min="85" max="115" value="100"></div>
+          <div class="upgrade"><div class="top"><b>Brake bias</b><span id="brakeVal"></span></div><input id="brakeTune" class="range" type="range" min="85" max="120" value="100"></div>
+          <div class="sub">Tuning changes handling instantly and is free.</div>
+        </div>
+      </div>
+
+      <div class="panel" id="style">
+        <div class="card">
+          <b>Bike paint</b>
+          <div class="colors" id="colors"></div>
+          <div class="statrow" style="margin-top:14px"><span>Rim glow</span><b><input type="checkbox" id="glow" checked></b></div>
+          <div class="statrow"><span>Road neon</span><b><input type="checkbox" id="roadNeon" checked></b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sub">Tip: close overtakes give bonus points and extra coins. Nitro is strongest above 120 km/h.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let audioCtx = null;
+function initAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+function tone(freq, duration, type='sine', volume=0.08, endFreq=null){
+  if(!audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,audioCtx.currentTime);
+  if(endFreq) o.frequency.exponentialRampToValueAtTime(Math.max(20,endFreq),audioCtx.currentTime+duration);
+  g.gain.setValueAtTime(0.0001,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(volume,audioCtx.currentTime+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+duration);
+  o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+duration+0.02);
+}
+function crashSound(){
+  initAudio();
+  tone(150,0.16,'sawtooth',0.12,55);
+  setTimeout(()=>tone(75,0.28,'square',0.09,38),90);
+  setTimeout(()=>tone(45,0.38,'triangle',0.07,25),180);
+}
+function endRunSound(){
+  initAudio();
+  tone(520,0.16,'triangle',0.07,360);
+  setTimeout(()=>tone(330,0.22,'triangle',0.065,220),150);
+  setTimeout(()=>tone(190,0.35,'sine',0.06,110),350);
+}
+const W = canvas.width, H = canvas.height;
+const keys = {left:false,right:false,gas:false,brake:false,nitro:false};
+
+const defaults = {
+  wallet: 500, best:0,
+  upgrades:{engine:1,handling:1,brakes:1,nitro:1},
+  tune:{steer:100,accel:100,brake:100},
+  color:'#00e5ff', glow:true, roadNeon:true
+};
+let save;
+try{ save = {...defaults, ...JSON.parse(localStorage.getItem('neonRiderSave')||'{}')}; }catch{ save={...defaults}; }
+save.upgrades = {...defaults.upgrades, ...(save.upgrades||{})};
+save.tune = {...defaults.tune, ...(save.tune||{})};
+
+const palette=['#00e5ff','#ff3d81','#ffd84d','#7cff6b','#a85cff','#ff7a3d','#f5f7ff','#2f7cff','#00ffa8','#ff5470','#7f8cff','#22c1ff'];
+let state = {};
+let traffic = [];
+let particles = [];
+let roadOffset=0, last=performance.now(), spawnTimer=0, coinTimer=0, flash=0;
+
+function reset(){
+  state = {
+    running:false, crashed:false, camera:'third', x:W/2, y:H-130, vx:0, speed:0,
+    score:0, coins:0, distance:0, nitro:100, combo:0, invuln:0
+  };
+  traffic=[]; particles=[]; roadOffset=0; spawnTimer=0; coinTimer=0; flash=0;
+  updateHUD();
+}
+function persist(){ localStorage.setItem('neonRiderSave', JSON.stringify(save)); }
+function getStats(){
+  const u=save.upgrades,t=save.tune;
+  return {
+    maxSpeed: 215 + u.engine*18,
+    accel: (95 + u.engine*9) * t.accel/100,
+    steer: (210 + u.handling*28) * t.steer/100,
+    brake: (150 + u.brakes*18) * t.brake/100,
+    nitroPower: 42 + u.nitro*9,
+    nitroDrain: 26 - u.nitro*2.5
+  }
+}
+function start(){
+  initAudio();
+  if(state.crashed) reset();
+  state.running=true;
+  document.getElementById('overlay').style.display='none';
+}
+function crash(){
+  if(!state.running || state.invuln>0) return;
+  state.running=false; state.crashed=true; flash=1;
+  crashSound();
+  save.wallet += state.coins;
+  if(state.score>save.best) save.best=Math.floor(state.score);
+  persist(); syncUI();
+  setTimeout(()=>{
+    endRunSound();
+    const ov=document.getElementById('overlay'); ov.style.display='flex';
+    ov.querySelector('h1').innerHTML='RUN <span>OVER</span>';
+    ov.querySelector('p').innerHTML=`Score <b>${Math.floor(state.score)}</b> • Earned <b>${state.coins}</b> coins.<br>Upgrade your bike and go again.`;
+    document.getElementById('startBtn').textContent='RIDE AGAIN';
+  },350);
+}
+function laneCenter(i){ return W/2 - 180 + i*120; }
+function spawnVehicle(){
+  const lane=Math.floor(Math.random()*4);
+  const types=[
+    {w:50,h:92,c:'#ff5b6e',v:Math.random()*40+70},
+    {w:54,h:100,c:'#ffc84a',v:Math.random()*35+75},
+    {w:58,h:108,c:'#51d88a',v:Math.random()*30+70},
+    {w:72,h:140,c:'#7b8cff',v:Math.random()*24+62}
+  ];
+  const t=types[Math.floor(Math.random()*types.length)];
+  traffic.push({x:laneCenter(lane),y:-160,w:t.w,h:t.h,color:t.c,speed:t.v,near:false,passed:false});
+}
+function spawnParticle(x,y,color,amt=8){
+  for(let i=0;i<amt;i++) particles.push({x,y,vx:(Math.random()-.5)*110,vy:Math.random()*90+30,life:1,color});
+}
+function rectHit(a,b){
+  return Math.abs(a.x-b.x) < (a.w+b.w)*0.42 && Math.abs(a.y-b.y) < (a.h+b.h)*0.42;
+}
+function showToast(text){
+  const el=document.getElementById('toast'); el.textContent=text; el.style.opacity=1;
+  clearTimeout(showToast.t); showToast.t=setTimeout(()=>el.style.opacity=0,900);
+}
+function update(dt){
+  const st=getStats();
+  if(state.running){
+    const gas = keys.gas ? st.accel : 0;
+    const brake = keys.brake ? st.brake : 0;
+    state.speed += (gas - brake - 18) * dt;
+    if(!keys.gas && !keys.brake) state.speed -= 18*dt;
+    const nitroActive = keys.nitro && state.nitro>0 && state.speed>80;
+    if(nitroActive){ state.speed += st.nitroPower*dt; state.nitro-=st.nitroDrain*dt; spawnParticle(state.x,state.y+48,save.color,2); }
+    else state.nitro = Math.min(100,state.nitro+6*dt);
+    state.speed=Math.max(0,Math.min(st.maxSpeed+(nitroActive?45:0),state.speed));
+    const steerScale=(0.35+state.speed/st.maxSpeed*.85);
+    if(keys.left) state.vx -= st.steer*steerScale*dt;
+    if(keys.right) state.vx += st.steer*steerScale*dt;
+    state.vx *= Math.pow(.002,dt);
+    state.x += state.vx*dt;
+    state.x=Math.max(W/2-225,Math.min(W/2+225,state.x));
+    roadOffset += state.speed*dt*1.4;
+    state.distance += state.speed*dt/3.6;
+    state.score += state.speed*dt*.11 + state.combo*dt*2;
+
+    spawnTimer -= dt;
+    const density=Math.max(.34,.86-state.speed/450);
+    if(spawnTimer<=0){ spawnVehicle(); spawnTimer=density*(.65+Math.random()*.7); }
+
+    for(const v of traffic){
+      const rel=(state.speed-v.speed)*1.35;
+      v.y += rel*dt;
+      if(!v.near && Math.abs(v.y-state.y)<75 && Math.abs(v.x-state.x)<82 && Math.abs(v.x-state.x)>38){
+        v.near=true; state.combo=Math.min(8,state.combo+1); state.score += 25*state.combo; state.coins += 2+state.combo;
+        showToast(`Close overtake x${state.combo}  +${25*state.combo}`);
+      }
+      if(!v.passed && v.y>state.y+80){ v.passed=true; state.coins += 1; }
+      if(rectHit({x:state.x,y:state.y,w:38,h:82},v)) crash();
+    }
+    traffic=traffic.filter(v=>v.y<H+200);
+    coinTimer += dt;
+    if(coinTimer>2.4){ state.combo=Math.max(0,state.combo-1); coinTimer=0; }
+  }
+  for(const p of particles){ p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt*1.6; }
+  particles=particles.filter(p=>p.life>0);
+  if(flash>0) flash=Math.max(0,flash-dt*2.5);
+  updateHUD();
+}
+function roundedRect(x,y,w,h,r,fill){
+  ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fillStyle=fill; ctx.fill();
+}
+function drawRoad(){
+  ctx.fillStyle='#10182a';ctx.fillRect(0,0,W,H);
+
+  if(state.camera==='first'){
+    // First-person perspective: horizon + trapezoidal road.
+    const horizon=H*.30;
+    ctx.fillStyle='#15243a';ctx.fillRect(0,0,W,horizon);
+    ctx.fillStyle='#0b1020';ctx.fillRect(0,horizon,W,H);
+
+    ctx.beginPath();
+    ctx.moveTo(W/2-70,horizon);
+    ctx.lineTo(W/2+70,horizon);
+    ctx.lineTo(W/2+310,H);
+    ctx.lineTo(W/2-310,H);
+    ctx.closePath();
+    ctx.fillStyle='#20283b';ctx.fill();
+
+    const roadL=W/2-310, roadR=W/2+310;
+    const laneBottom=155;
+    for(let l=1;l<4;l++){
+      const xb=roadL+l*(620/4);
+      ctx.strokeStyle='#eef6ffcc';ctx.lineWidth=6;
+      for(let i=0;i<12;i++){
+        let p=((i*0.12 + (roadOffset*.0018))%1);
+        let y=horizon+(H-horizon)*p;
+        let x=W/2 + (xb-W/2)*p;
+        let len=8+80*p*p;
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+len);ctx.stroke();
+      }
+    }
+    if(save.roadNeon){
+      ctx.shadowBlur=18;ctx.shadowColor='#00d9ff';
+      ctx.strokeStyle='#00d9ff88';ctx.lineWidth=5;
+      ctx.beginPath();ctx.moveTo(W/2-70,horizon);ctx.lineTo(roadL,H);ctx.stroke();
+      ctx.shadowColor='#ff3d81';ctx.strokeStyle='#ff3d8188';
+      ctx.beginPath();ctx.moveTo(W/2+70,horizon);ctx.lineTo(roadR,H);ctx.stroke();
+      ctx.shadowBlur=0;
+    }
+
+    // First-person handlebars/dashboard.
+    const lean=Math.max(-18,Math.min(18,state.vx*.035));
+    ctx.save();ctx.translate(lean,H-35);
+    ctx.fillStyle='#090d16';ctx.beginPath();ctx.roundRect(W/2-190, H-75,380,110,35);ctx.fill();
+    ctx.strokeStyle=save.color;ctx.lineWidth=7;
+    ctx.beginPath();ctx.moveTo(W/2-165,H-48);ctx.lineTo(W/2-95,H-85);ctx.moveTo(W/2+165,H-48);ctx.lineTo(W/2+95,H-85);ctx.stroke();
+    ctx.fillStyle='#0e1729';ctx.beginPath();ctx.arc(W/2,H-62,45,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=save.color;ctx.lineWidth=4;ctx.stroke();
+    ctx.fillStyle='#e8f8ff';ctx.font='900 16px system-ui';ctx.textAlign='center';
+    ctx.fillText(Math.floor(state.speed)+' KM/H',W/2,H-57);
+    ctx.restore();
+    return;
+  }
+
+  // Third-person arcade camera.
+  ctx.fillStyle='#20283b';ctx.fillRect(W/2-260,0,520,H);
+  ctx.fillStyle='#171d2b';ctx.fillRect(W/2-240,0,480,H);
+  if(save.roadNeon){
+    ctx.shadowBlur=18;ctx.shadowColor='#00d9ff';
+    ctx.fillStyle='#00d9ff66';ctx.fillRect(W/2-245,0,3,H);
+    ctx.shadowColor='#ff3d81';ctx.fillStyle='#ff3d8166';ctx.fillRect(W/2+242,0,3,H);
+    ctx.shadowBlur=0;
+  }
+  const dash=68,gap=42,period=dash+gap;
+  for(let l=1;l<4;l++){
+    const x=W/2-240+l*120;
+    for(let y=-period+(roadOffset%period);y<H+period;y+=period){
+      ctx.fillStyle='#f7fbffbb';ctx.fillRect(x-3,y,6,dash);
+    }
+  }
+  for(let y=-(roadOffset*.6%80);y<H+80;y+=80){
+    ctx.fillStyle='#38d8ff33';ctx.fillRect(W/2-258,y,12,38);
+    ctx.fillStyle='#ff4d9133';ctx.fillRect(W/2+246,y+25,12,38);
+  }
+}
+function drawVehicle(v){
+  if(state.camera==='first'){
+    const horizon=H*.30;
+    const p=Math.max(.02,Math.min(1,(v.y+120)/(H+240)));
+    const sx=W/2+(v.x-W/2)*p;
+    const sy=horizon+(H-horizon)*p;
+    const scale=.18+.82*p;
+    ctx.save();ctx.translate(sx,sy);ctx.scale(scale,scale);
+    ctx.shadowBlur=12;ctx.shadowColor=v.color;
+    roundedRect(-v.w/2,-v.h/2,v.w,v.h,12,'#0b0e16');
+    roundedRect(-v.w/2+5,-v.h/2+7,v.w-10,v.h-14,9,v.color);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#17223a';ctx.fillRect(-v.w*.28,-v.h*.24,v.w*.56,v.h*.26);
+    ctx.fillStyle='#d9f4ff';ctx.fillRect(-v.w*.29,-v.h*.38,8,9);ctx.fillRect(v.w*.29-8,-v.h*.38,8,9);
+    ctx.fillStyle='#ff404f';ctx.fillRect(-v.w*.29,v.h*.34,8,8);ctx.fillRect(v.w*.29-8,v.h*.34,8,8);
+    ctx.restore();
+    return;
+  }
+  ctx.save();ctx.translate(v.x,v.y);
+  ctx.shadowBlur=12;ctx.shadowColor=v.color;
+  roundedRect(-v.w/2,-v.h/2,v.w,v.h,12,'#0b0e16');
+  roundedRect(-v.w/2+5,-v.h/2+7,v.w-10,v.h-14,9,v.color);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#17223a';ctx.fillRect(-v.w*.28,-v.h*.24,v.w*.56,v.h*.26);
+  ctx.fillStyle='#d9f4ff';ctx.fillRect(-v.w*.29,-v.h*.38,8,9);ctx.fillRect(v.w*.29-8,v.h*.38*-1,8,9);
+  ctx.fillStyle='#ff404f';ctx.fillRect(-v.w*.29,v.h*.34,8,8);ctx.fillRect(v.w*.29-8,v.h*.34,8,8);
+  ctx.restore();
+}
+function drawBike(){
+  if(state.camera==='first') return;
+  const x=state.x,y=state.y, lean=Math.max(-.22,Math.min(.22,state.vx/350));
+  ctx.save();ctx.translate(x,y);ctx.rotate(lean);
+  if(save.glow){ctx.shadowBlur=24;ctx.shadowColor=save.color;}
+  ctx.fillStyle='#0a0d12';ctx.beginPath();ctx.ellipse(0,-28,11,24,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(0,31,12,27,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=save.color;ctx.beginPath();ctx.roundRect(-15,-28,30,58,9);ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#e9f7ff';ctx.beginPath();ctx.roundRect(-8,-24,16,16,6);ctx.fill();
+  ctx.fillStyle='#11192a';ctx.beginPath();ctx.roundRect(-9,-4,18,23,7);ctx.fill();
+  ctx.strokeStyle='#dff7ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,-19);ctx.lineTo(18,-19);ctx.stroke();
+  if(keys.nitro && state.nitro>0 && state.speed>80){
+    const g=ctx.createLinearGradient(0,30,0,68);g.addColorStop(0,'#fff');g.addColorStop(.3,'#00e5ff');g.addColorStop(1,'#6a3cff00');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-8,26);ctx.lineTo(8,26);ctx.lineTo(0,68);ctx.fill();
+  }
+  ctx.restore();
+}
+function draw(){
+  drawRoad();
+  for(const v of traffic) drawVehicle(v);
+  drawBike();
+  for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,8)}ctx.globalAlpha=1;
+  ctx.fillStyle='#06101dcc';ctx.fillRect(18,H-82,190,50);
+  ctx.fillStyle='#dcecff';ctx.font='800 12px system-ui';ctx.fillText('NITRO',30,H-57);
+  ctx.fillStyle='#14233b';ctx.fillRect(78,H-67,112,12);
+  const grad=ctx.createLinearGradient(78,0,190,0);grad.addColorStop(0,'#00e5ff');grad.addColorStop(1,'#8b5cff');
+  ctx.fillStyle=grad;ctx.fillRect(78,H-67,112*state.nitro/100,12);
+  if(flash>0){ctx.fillStyle=`rgba(255,70,95,${flash*.45})`;ctx.fillRect(0,0,W,H)}
+}
+function loop(t){
+  const dt=Math.min(.032,(t-last)/1000);last=t;update(dt);draw();requestAnimationFrame(loop);
+}
+function updateHUD(){
+  document.getElementById('speed').textContent=Math.floor(state.speed);
+  document.getElementById('score').textContent=Math.floor(state.score);
+  document.getElementById('runCoins').textContent=state.coins;
+}
+function syncUI(){
+  document.getElementById('wallet').textContent=save.wallet;
+  document.getElementById('best').textContent=save.best;
+  ['engine','handling','brakes','nitro'].forEach(k=>{
+    document.getElementById(k+'Lv').textContent=save.upgrades[k];
+    document.getElementById(k+'Bar').style.width=(save.upgrades[k]/5*100)+'%';
+    const c=150*save.upgrades[k];
+    document.getElementById(k+'Cost').textContent=save.upgrades[k]>=5?'MAX':c;
+    const btn=document.querySelector(`[data-up="${k}"]`);
+    btn.disabled=save.upgrades[k]>=5;
+    btn.style.opacity=btn.disabled?.5:1;
+  });
+  document.getElementById('steerTune').value=save.tune.steer;
+  document.getElementById('accelTune').value=save.tune.accel;
+  document.getElementById('brakeTune').value=save.tune.brake;
+  document.getElementById('steerVal').textContent=save.tune.steer+'%';
+  document.getElementById('accelVal').textContent=save.tune.accel+'%';
+  document.getElementById('brakeVal').textContent=save.tune.brake+'%';
+  document.getElementById('glow').checked=save.glow;
+  document.getElementById('roadNeon').checked=save.roadNeon;
+  [...document.querySelectorAll('.swatch')].forEach(s=>s.classList.toggle('sel',s.dataset.c===save.color));
+}
+document.addEventListener('keydown',e=>{
+  const map={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'gas',KeyW:'gas',ArrowDown:'brake',KeyS:'brake',ShiftLeft:'nitro',ShiftRight:'nitro'};
+  if(map[e.code]){keys[map[e.code]]=true;e.preventDefault();}
+});
+document.addEventListener('keyup',e=>{
+  const map={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'gas',KeyW:'gas',ArrowDown:'brake',KeyS:'brake',ShiftLeft:'nitro',ShiftRight:'nitro'};
+  if(map[e.code]) keys[map[e.code]]=false;
+});
+document.querySelectorAll('[data-key]').forEach(b=>{
+  const k=b.dataset.key;
+  ['pointerdown','touchstart'].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault();keys[k]=true;}));
+  ['pointerup','pointerleave','touchend','touchcancel'].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault();keys[k]=false;}));
+});
+document.getElementById('startBtn').onclick=start;
+document.getElementById('cameraBtn').onclick=()=>{
+  state.camera = state.camera==='third'?'first':'third';
+  document.getElementById('cameraBtn').textContent='CAMERA: '+(state.camera==='third'?'THIRD PERSON':'FIRST PERSON');
+  showToast(state.camera==='first'?'First-person camera':'Third-person camera');
+};
+document.getElementById('closeGarageBtn').onclick=()=>{document.getElementById('overlay').style.display='none'};
+document.getElementById('restartBtn').onclick=()=>{reset();start()};
+document.getElementById('nitroBtn').onpointerdown=()=>keys.nitro=true;
+document.getElementById('nitroBtn').onpointerup=()=>keys.nitro=false;
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active');
+});
+document.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.up,lv=save.upgrades[k]; if(lv>=5)return;
+  const cost=150*lv;
+  if(save.wallet<cost){showToast('Not enough coins');return}
+  save.wallet-=cost;save.upgrades[k]++;persist();syncUI();showToast(`${k} upgraded`);
+});
+[['steerTune','steer'],['accelTune','accel'],['brakeTune','brake']].forEach(([id,k])=>{
+  document.getElementById(id).oninput=e=>{save.tune[k]=+e.target.value;persist();syncUI()};
+});
+document.getElementById('glow').onchange=e=>{save.glow=e.target.checked;persist()};
+document.getElementById('roadNeon').onchange=e=>{save.roadNeon=e.target.checked;persist()};
+const colors=document.getElementById('colors');
+palette.forEach(c=>{const d=document.createElement('div');d.className='swatch';d.style.background=c;d.dataset.c=c;d.onclick=()=>{save.color=c;persist();syncUI()};colors.appendChild(d)});
+reset();syncUI();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
