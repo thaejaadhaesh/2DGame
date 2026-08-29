@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Neon Traffic Rider</title>
+<title>#46 Bike Traffic Sim</title>
 <style>
 :root{
   --bg:#0a0f1f;--panel:#121a31;--panel2:#182443;--text:#eef5ff;--muted:#9fb0d2;
@@ -45,12 +45,13 @@ button:hover{transform:translateY(-1px);filter:brightness(1.1)}
 .swatch.sel{outline:2px solid white}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#050916bb;backdrop-filter:blur(7px);z-index:5}
 .modal{width:min(520px,88%);padding:28px;border-radius:22px;background:linear-gradient(180deg,#152143,#0c1328);border:1px solid #3a5187;box-shadow:0 20px 50px #0008}
-.modal h1{margin:0;font-size:42px;line-height:1}
+.modal h1{margin:0;font-size:36px;line-height:1.1}
 .modal h1 span{color:#00e5ff}
 .modal p{color:#b9c9e8;line-height:1.55}
 .kbd{padding:4px 7px;border-radius:7px;background:#243355;border:1px solid #435a8b;font-weight:800}
 .hud{position:absolute;left:16px;top:14px;right:16px;display:flex;justify-content:space-between;pointer-events:none;z-index:2}
 .hudbox{background:#07111dcc;border:1px solid #2c4268;border-radius:14px;padding:8px 12px;font-weight:900}
+.lives{color:#ff3d81;letter-spacing:2px}
 #toast{position:absolute;left:50%;top:80px;transform:translateX(-50%);background:#07111ddd;border:1px solid #435f93;border-radius:12px;padding:9px 14px;opacity:0;transition:.25s;z-index:6;pointer-events:none}
 .mobileControls{display:none;position:absolute;inset:auto 12px 12px 12px;z-index:3;justify-content:space-between}
 .pad{display:grid;grid-template-columns:repeat(3,54px);gap:7px}
@@ -69,14 +70,15 @@ button:hover{transform:translateY(-1px);filter:brightness(1.1)}
       <canvas id="game" width="840" height="760"></canvas>
       <div class="hud">
         <div class="hudbox"><span id="speed">0</span> km/h</div>
+        <div class="hudbox"><span id="lives" class="lives">❤️❤️❤️</span></div>
         <div class="hudbox">🏁 <span id="score">0</span> &nbsp; 🪙 <span id="runCoins">0</span></div>
       </div>
       <div id="toast">Perfect overtake +25</div>
       <div id="overlay" class="overlay">
         <div class="modal">
-          <div style="font-size:13px;color:#8fb7ff;font-weight:900;letter-spacing:2px">ARCADE TRAFFIC RACER</div>
-          <h1>NEON <span>RIDER</span></h1>
-          <p>Thread through dense highway traffic, chain close overtakes, use nitro, and build a faster custom bike in the garage.</p>
+          <div style="font-size:13px;color:#8fb7ff;font-weight:900;letter-spacing:2px">REALISTIC HIGHWAY RACER</div>
+          <h1>#46 BIKE <span>TRAFFIC SIM</span></h1>
+          <p>Weave through dense traffic, lean into turns, use nitro, and utilize your 3 lifelines wisely to stay on the road!</p>
           <p><span class="kbd">W / ↑</span> accelerate &nbsp; <span class="kbd">S / ↓</span> brake &nbsp; <span class="kbd">A D / ← →</span> steer &nbsp; <span class="kbd">Shift</span> nitro</p>
           <div class="btnrow"><button class="primary" id="startBtn">START RUN</button><button id="closeGarageBtn">GARAGE READY</button></div>
         </div>
@@ -87,15 +89,15 @@ button:hover{transform:translateY(-1px);filter:brightness(1.1)}
       </div>
     </div>
     <aside class="sidebar">
-      <div class="brand">NEON <span>RIDER</span></div>
-      <div class="sub">Highway traffic racing • build 1.0</div>
+      <div class="brand">#46 BIKE <span>TRAFFIC SIM</span></div>
+      <div class="sub">Highway traffic racing • build 2.5</div>
 
       <div class="card">
         <div class="statrow"><span>Wallet</span><b>🪙 <span id="wallet">0</span></b></div>
         <div class="statrow"><span>Best score</span><b id="best">0</b></div>
-        <div class="statrow"><span>Bike</span><b id="bikeName">Volt 400</b></div>
+        <div class="statrow"><span>Bike</span><b id="bikeName">VR-46 Superbike</b></div>
         <div class="btnrow"><button class="primary" id="restartBtn">NEW RUN</button><button class="pink" id="nitroBtn">NITRO</button></div>
-        <button id="cameraBtn" style="width:100%;margin-top:8px">CAMERA: THIRD PERSON</button>
+        <button id="cameraBtn" style="width:100%;margin-top:8px">CAMERA: FIRST PERSON</button>
       </div>
 
       <div class="tabs">
@@ -148,7 +150,7 @@ button:hover{transform:translateY(-1px);filter:brightness(1.1)}
       </div>
 
       <div class="card">
-        <div class="sub">Tip: close overtakes give bonus points and extra coins. Nitro is strongest above 120 km/h.</div>
+        <div class="sub">Tip: You have 3 lifelines. Every hit grants temporary invulnerability so you can recover!</div>
       </div>
     </aside>
   </div>
@@ -208,8 +210,8 @@ let roadOffset=0, last=performance.now(), spawnTimer=0, coinTimer=0, flash=0;
 
 function reset(){
   state = {
-    running:false, crashed:false, camera:'third', x:W/2, y:H-130, vx:0, speed:0,
-    score:0, coins:0, distance:0, nitro:100, combo:0, invuln:0
+    running:false, crashed:false, camera:'first', x:W/2, y:H-130, vx:0, speed:0, lean:0,
+    score:0, coins:0, distance:0, nitro:100, combo:0, invuln:0, lives: 3
   };
   traffic=[]; particles=[]; roadOffset=0; spawnTimer=0; coinTimer=0; flash=0;
   updateHUD();
@@ -218,12 +220,12 @@ function persist(){ localStorage.setItem('neonRiderSave', JSON.stringify(save));
 function getStats(){
   const u=save.upgrades,t=save.tune;
   return {
-    maxSpeed: 215 + u.engine*18,
-    accel: (95 + u.engine*9) * t.accel/100,
-    steer: (210 + u.handling*28) * t.steer/100,
-    brake: (150 + u.brakes*18) * t.brake/100,
-    nitroPower: 42 + u.nitro*9,
-    nitroDrain: 26 - u.nitro*2.5
+    maxSpeed: 230 + u.engine*20,
+    accelForce: (110 + u.engine*14) * (t.accel/100),
+    steerForce: (480 + u.handling*60) * (t.steer/100),
+    brakeForce: (260 + u.brakes*35) * (t.brake/100),
+    nitroPower: 65 + u.nitro*12,
+    nitroDrain: 25 - u.nitro*2.2
   }
 }
 function start(){
@@ -232,21 +234,36 @@ function start(){
   state.running=true;
   document.getElementById('overlay').style.display='none';
 }
-function crash(){
-  if(!state.running || state.invuln>0) return;
-  state.running=false; state.crashed=true; flash=1;
+function hitVehicle(v){
+  if(!state.running || state.invuln > 0) return;
+  
+  state.lives--;
+  state.invuln = 2.0; // 2 seconds of invulnerability
+  state.speed *= 0.5; // lose momentum
+  flash = 1;
   crashSound();
-  save.wallet += state.coins;
-  if(state.score>save.best) save.best=Math.floor(state.score);
-  persist(); syncUI();
-  setTimeout(()=>{
-    endRunSound();
-    const ov=document.getElementById('overlay'); ov.style.display='flex';
-    ov.querySelector('h1').innerHTML='RUN <span>OVER</span>';
-    ov.querySelector('p').innerHTML=`Score <b>${Math.floor(state.score)}</b> • Earned <b>${state.coins}</b> coins.<br>Upgrade your bike and go again.`;
-    document.getElementById('startBtn').textContent='RIDE AGAIN';
-  },350);
+  
+  // Blast particles
+  spawnParticle(v.x, v.y, '#ff3d81', 20);
+  
+  if(state.lives <= 0){
+    state.running = false;
+    state.crashed = true;
+    save.wallet += state.coins;
+    if(state.score > save.best) save.best = Math.floor(state.score);
+    persist(); syncUI();
+    setTimeout(()=>{
+      endRunSound();
+      const ov=document.getElementById('overlay'); ov.style.display='flex';
+      ov.querySelector('h1').innerHTML='RUN <span>OVER</span>';
+      ov.querySelector('p').innerHTML=`Score <b>${Math.floor(state.score)}</b> • Earned <b>${state.coins}</b> coins.<br>Upgrade your bike and go again.`;
+      document.getElementById('startBtn').textContent='RIDE AGAIN';
+    },350);
+  } else {
+    showToast(`LIFELINE LOST! ${state.lives} LEFT`);
+  }
 }
+
 function laneCenter(i){ return W/2 - 180 + i*120; }
 function spawnVehicle(){
   const lane=Math.floor(Math.random()*4);
@@ -260,7 +277,7 @@ function spawnVehicle(){
   traffic.push({x:laneCenter(lane),y:-160,w:t.w,h:t.h,color:t.c,speed:t.v,near:false,passed:false});
 }
 function spawnParticle(x,y,color,amt=8){
-  for(let i=0;i<amt;i++) particles.push({x,y,vx:(Math.random()-.5)*110,vy:Math.random()*90+30,life:1,color});
+  for(let i=0;i<amt;i++) particles.push({x,y,vx:(Math.random()-.5)*180,vy:(Math.random()-.5)*180,life:1,color});
 }
 function rectHit(a,b){
   return Math.abs(a.x-b.x) < (a.w+b.w)*0.42 && Math.abs(a.y-b.y) < (a.h+b.h)*0.42;
@@ -269,42 +286,65 @@ function showToast(text){
   const el=document.getElementById('toast'); el.textContent=text; el.style.opacity=1;
   clearTimeout(showToast.t); showToast.t=setTimeout(()=>el.style.opacity=0,900);
 }
+
 function update(dt){
   const st=getStats();
+  if(state.invuln > 0) state.invuln = Math.max(0, state.invuln - dt);
+
   if(state.running){
-    const gas = keys.gas ? st.accel : 0;
-    const brake = keys.brake ? st.brake : 0;
-    state.speed += (gas - brake - 18) * dt;
-    if(!keys.gas && !keys.brake) state.speed -= 18*dt;
-    const nitroActive = keys.nitro && state.nitro>0 && state.speed>80;
-    if(nitroActive){ state.speed += st.nitroPower*dt; state.nitro-=st.nitroDrain*dt; spawnParticle(state.x,state.y+48,save.color,2); }
-    else state.nitro = Math.min(100,state.nitro+6*dt);
-    state.speed=Math.max(0,Math.min(st.maxSpeed+(nitroActive?45:0),state.speed));
-    const steerScale=(0.35+state.speed/st.maxSpeed*.85);
-    if(keys.left) state.vx -= st.steer*steerScale*dt;
-    if(keys.right) state.vx += st.steer*steerScale*dt;
-    state.vx *= Math.pow(.002,dt);
-    state.x += state.vx*dt;
-    state.x=Math.max(W/2-225,Math.min(W/2+225,state.x));
-    roadOffset += state.speed*dt*1.4;
-    state.distance += state.speed*dt/3.6;
-    state.score += state.speed*dt*.11 + state.combo*dt*2;
+    const speedRatio = state.speed / st.maxSpeed;
+    const engineTorque = Math.max(0.2, 1.0 - Math.pow(speedRatio, 1.4));
+    let currentAccel = keys.gas ? (st.accelForce * engineTorque) : 0;
+    
+    let currentBrake = keys.brake ? st.brakeForce : 0;
+    let aeroDrag = 0.0018 * (state.speed * state.speed);
+    let rollingFriction = 12.0;
+
+    const nitroActive = keys.nitro && state.nitro>0 && state.speed>40;
+    if(nitroActive){ 
+      currentAccel += st.nitroPower; 
+      state.nitro -= st.nitroDrain*dt; 
+      spawnParticle(state.x, state.y+48, save.color, 2); 
+    } else { 
+      state.nitro = Math.min(100, state.nitro + 7*dt); 
+    }
+
+    state.speed += (currentAccel - currentBrake - aeroDrag - rollingFriction) * dt;
+    state.speed = Math.max(0, Math.min(st.maxSpeed + (nitroActive ? 35 : 0), state.speed));
+
+    let targetSteer = 0;
+    if(keys.left) targetSteer -= 1;
+    if(keys.right) targetSteer += 1;
+
+    const lateralControl = (1.0 - (speedRatio * 0.45));
+    const targetVx = targetSteer * st.steerForce * lateralControl;
+
+    state.vx += (targetVx - state.vx) * 8.5 * dt;
+    state.x += state.vx * dt;
+    state.x = Math.max(W/2-225, Math.min(W/2+225, state.x));
+
+    const targetLean = (state.vx / st.steerForce);
+    state.lean += (targetLean - state.lean) * 10 * dt;
+
+    roadOffset += state.speed * dt * 1.5;
+    state.distance += state.speed * dt / 3.6;
+    state.score += state.speed * dt * 0.12 + state.combo * dt * 2.5;
 
     spawnTimer -= dt;
-    const density=Math.max(.34,.86-state.speed/450);
-    if(spawnTimer<=0){ spawnVehicle(); spawnTimer=density*(.65+Math.random()*.7); }
+    const density = Math.max(0.32, 0.82 - state.speed/480);
+    if(spawnTimer<=0){ spawnVehicle(); spawnTimer=density*(0.6+Math.random()*0.65); }
 
     for(const v of traffic){
-      const rel=(state.speed-v.speed)*1.35;
-      v.y += rel*dt;
+      const rel = (state.speed - v.speed) * 1.35;
+      v.y += rel * dt;
       if(!v.near && Math.abs(v.y-state.y)<75 && Math.abs(v.x-state.x)<82 && Math.abs(v.x-state.x)>38){
         v.near=true; state.combo=Math.min(8,state.combo+1); state.score += 25*state.combo; state.coins += 2+state.combo;
         showToast(`Close overtake x${state.combo}  +${25*state.combo}`);
       }
       if(!v.passed && v.y>state.y+80){ v.passed=true; state.coins += 1; }
-      if(rectHit({x:state.x,y:state.y,w:38,h:82},v)) crash();
+      if(rectHit({x:state.x,y:state.y,w:38,h:82},v)) hitVehicle(v);
     }
-    traffic=traffic.filter(v=>v.y<H+200);
+    traffic=traffic.filter(v=>v.y<H+250);
     coinTimer += dt;
     if(coinTimer>2.4){ state.combo=Math.max(0,state.combo-1); coinTimer=0; }
   }
@@ -313,63 +353,75 @@ function update(dt){
   if(flash>0) flash=Math.max(0,flash-dt*2.5);
   updateHUD();
 }
+
 function roundedRect(x,y,w,h,r,fill){
   ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fillStyle=fill; ctx.fill();
 }
+
 function drawRoad(){
   ctx.fillStyle='#10182a';ctx.fillRect(0,0,W,H);
 
   if(state.camera==='first'){
-    // First-person perspective: horizon + trapezoidal road.
-    const horizon=H*.30;
-    ctx.fillStyle='#15243a';ctx.fillRect(0,0,W,horizon);
-    ctx.fillStyle='#0b1020';ctx.fillRect(0,horizon,W,H);
+    // --- ENHANCED FIRST PERSON ROAD VIEW ---
+    const horizon = H * 0.42; // Lowered horizon for expansive road visibility
+    const roadCamX = (state.x - W/2) * 1.1;
 
+    ctx.save();
+    ctx.translate(W/2, horizon);
+    ctx.rotate(state.lean * 0.05); // Subtle camera tilt for realism
+    ctx.translate(-W/2, -horizon);
+
+    // Sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, horizon);
+    skyGrad.addColorStop(0, '#040814');
+    skyGrad.addColorStop(1, '#16233d');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(-100, -100, W+200, horizon+100);
+
+    // Ground Plane
+    ctx.fillStyle = '#080d19';
+    ctx.fillRect(-100, horizon, W+200, H);
+
+    // Wide Realistic Perspective Road
+    const topW = 100, botW = 800;
     ctx.beginPath();
-    ctx.moveTo(W/2-70,horizon);
-    ctx.lineTo(W/2+70,horizon);
-    ctx.lineTo(W/2+310,H);
-    ctx.lineTo(W/2-310,H);
+    ctx.moveTo(W/2 - topW - roadCamX*0.04, horizon);
+    ctx.lineTo(W/2 + topW - roadCamX*0.04, horizon);
+    ctx.lineTo(W/2 + botW - roadCamX, H + 50);
+    ctx.lineTo(W/2 - botW - roadCamX, H + 50);
     ctx.closePath();
-    ctx.fillStyle='#20283b';ctx.fill();
+    ctx.fillStyle = '#1c2436'; ctx.fill();
 
-    const roadL=W/2-310, roadR=W/2+310;
-    const laneBottom=155;
-    for(let l=1;l<4;l++){
-      const xb=roadL+l*(620/4);
-      ctx.strokeStyle='#eef6ffcc';ctx.lineWidth=6;
-      for(let i=0;i<12;i++){
-        let p=((i*0.12 + (roadOffset*.0018))%1);
-        let y=horizon+(H-horizon)*p;
-        let x=W/2 + (xb-W/2)*p;
-        let len=8+80*p*p;
-        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+len);ctx.stroke();
+    // 4 Lane Dividers
+    for(let l=1; l<4; l++){
+      const topX = (W/2 - topW) + l * ((topW*2)/4) - roadCamX*0.04;
+      const botX = (W/2 - botW) + l * ((botW*2)/4) - roadCamX;
+
+      ctx.strokeStyle='#eef6ffcc'; ctx.lineWidth=3;
+      for(let i=0; i<15; i++){
+        let p = ((i*0.09 + (roadOffset*0.0015)) % 1);
+        let py = horizon + (H - horizon) * Math.pow(p, 1.8);
+        let px = topX + (botX - topX) * p;
+        let len = 3 + 80 * p;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + (botX-topX)*0.02*p, py + len); ctx.stroke();
       }
     }
+
+    // Neon Curbs
     if(save.roadNeon){
-      ctx.shadowBlur=18;ctx.shadowColor='#00d9ff';
-      ctx.strokeStyle='#00d9ff88';ctx.lineWidth=5;
-      ctx.beginPath();ctx.moveTo(W/2-70,horizon);ctx.lineTo(roadL,H);ctx.stroke();
-      ctx.shadowColor='#ff3d81';ctx.strokeStyle='#ff3d8188';
-      ctx.beginPath();ctx.moveTo(W/2+70,horizon);ctx.lineTo(roadR,H);ctx.stroke();
+      ctx.shadowBlur=16; ctx.shadowColor='#00d9ff';
+      ctx.strokeStyle='#00d9ff'; ctx.lineWidth=5;
+      ctx.beginPath(); ctx.moveTo(W/2-topW - roadCamX*0.04, horizon); ctx.lineTo(W/2-botW - roadCamX, H+50); ctx.stroke();
+      
+      ctx.shadowColor='#ff3d81'; ctx.strokeStyle='#ff3d81';
+      ctx.beginPath(); ctx.moveTo(W/2+topW - roadCamX*0.04, horizon); ctx.lineTo(W/2+botW - roadCamX, H+50); ctx.stroke();
       ctx.shadowBlur=0;
     }
-
-    // First-person handlebars/dashboard.
-    const lean=Math.max(-18,Math.min(18,state.vx*.035));
-    ctx.save();ctx.translate(lean,H-35);
-    ctx.fillStyle='#090d16';ctx.beginPath();ctx.roundRect(W/2-190, H-75,380,110,35);ctx.fill();
-    ctx.strokeStyle=save.color;ctx.lineWidth=7;
-    ctx.beginPath();ctx.moveTo(W/2-165,H-48);ctx.lineTo(W/2-95,H-85);ctx.moveTo(W/2+165,H-48);ctx.lineTo(W/2+95,H-85);ctx.stroke();
-    ctx.fillStyle='#0e1729';ctx.beginPath();ctx.arc(W/2,H-62,45,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=save.color;ctx.lineWidth=4;ctx.stroke();
-    ctx.fillStyle='#e8f8ff';ctx.font='900 16px system-ui';ctx.textAlign='center';
-    ctx.fillText(Math.floor(state.speed)+' KM/H',W/2,H-57);
     ctx.restore();
     return;
   }
 
-  // Third-person arcade camera.
+  // --- THIRD PERSON CAMERA ROAD RENDERING ---
   ctx.fillStyle='#20283b';ctx.fillRect(W/2-260,0,520,H);
   ctx.fillStyle='#171d2b';ctx.fillRect(W/2-240,0,480,H);
   if(save.roadNeon){
@@ -385,42 +437,60 @@ function drawRoad(){
       ctx.fillStyle='#f7fbffbb';ctx.fillRect(x-3,y,6,dash);
     }
   }
-  for(let y=-(roadOffset*.6%80);y<H+80;y+=80){
-    ctx.fillStyle='#38d8ff33';ctx.fillRect(W/2-258,y,12,38);
-    ctx.fillStyle='#ff4d9133';ctx.fillRect(W/2+246,y+25,12,38);
-  }
 }
+
 function drawVehicle(v){
   if(state.camera==='first'){
-    const horizon=H*.30;
-    const p=Math.max(.02,Math.min(1,(v.y+120)/(H+240)));
-    const sx=W/2+(v.x-W/2)*p;
-    const sy=horizon+(H-horizon)*p;
-    const scale=.18+.82*p;
-    ctx.save();ctx.translate(sx,sy);ctx.scale(scale,scale);
-    ctx.shadowBlur=12;ctx.shadowColor=v.color;
-    roundedRect(-v.w/2,-v.h/2,v.w,v.h,12,'#0b0e16');
-    roundedRect(-v.w/2+5,-v.h/2+7,v.w-10,v.h-14,9,v.color);
-    ctx.shadowBlur=0;
-    ctx.fillStyle='#17223a';ctx.fillRect(-v.w*.28,-v.h*.24,v.w*.56,v.h*.26);
-    ctx.fillStyle='#d9f4ff';ctx.fillRect(-v.w*.29,-v.h*.38,8,9);ctx.fillRect(v.w*.29-8,-v.h*.38,8,9);
-    ctx.fillStyle='#ff404f';ctx.fillRect(-v.w*.29,v.h*.34,8,8);ctx.fillRect(v.w*.29-8,v.h*.34,8,8);
+    const horizon = H * 0.42;
+    const roadCamX = (state.x - W/2) * 1.1;
+    
+    const depthRatio = Math.max(0.01, Math.min(1, (v.y + 160) / (H + 200)));
+    const scale = Math.pow(depthRatio, 1.8);
+    
+    if(scale < 0.02) return;
+
+    const topX = (W/2) - roadCamX * 0.04;
+    const botX = (W/2) - roadCamX;
+    
+    const laneRel = (v.x - W/2) / 240;
+    const screenX = topX + (botX - topX) * scale + (laneRel * 380 * scale);
+    const screenY = horizon + (H - horizon) * scale;
+
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.scale(scale * 1.8, scale * 1.8);
+    
+    ctx.shadowBlur = 12; ctx.shadowColor = v.color;
+    roundedRect(-v.w/2, -v.h, v.w, v.h, 10, '#0a0d14');
+    roundedRect(-v.w/2 + 4, -v.h + 5, v.w - 8, v.h - 10, 8, v.color);
+    ctx.shadowBlur = 0;
+    
+    ctx.fillStyle = '#17223a'; ctx.fillRect(-v.w*0.3, -v.h*0.75, v.w*0.6, v.h*0.3);
+    ctx.fillStyle = '#ff3344'; 
+    ctx.fillRect(-v.w*0.42, -v.h*0.2, 10, 12);
+    ctx.fillRect(v.w*0.42 - 10, -v.h*0.2, 10, 12);
+    
     ctx.restore();
     return;
   }
+
+  // Draw 3rd Person Vehicle
   ctx.save();ctx.translate(v.x,v.y);
   ctx.shadowBlur=12;ctx.shadowColor=v.color;
   roundedRect(-v.w/2,-v.h/2,v.w,v.h,12,'#0b0e16');
   roundedRect(-v.w/2+5,-v.h/2+7,v.w-10,v.h-14,9,v.color);
   ctx.shadowBlur=0;
   ctx.fillStyle='#17223a';ctx.fillRect(-v.w*.28,-v.h*.24,v.w*.56,v.h*.26);
-  ctx.fillStyle='#d9f4ff';ctx.fillRect(-v.w*.29,-v.h*.38,8,9);ctx.fillRect(v.w*.29-8,v.h*.38*-1,8,9);
+  ctx.fillStyle='#d9f4ff';ctx.fillRect(-v.w*.29,-v.h*.38,8,9);ctx.fillRect(v.w*.29-8,-v.h*.38*-1,8,9);
   ctx.fillStyle='#ff404f';ctx.fillRect(-v.w*.29,v.h*.34,8,8);ctx.fillRect(v.w*.29-8,v.h*.34,8,8);
   ctx.restore();
 }
+
 function drawBike(){
   if(state.camera==='first') return;
-  const x=state.x,y=state.y, lean=Math.max(-.22,Math.min(.22,state.vx/350));
+  if(state.invuln > 0 && Math.floor(Date.now() / 100) % 2 === 0) return; // Invulnerability blink
+
+  const x=state.x,y=state.y, lean=state.lean * 0.45;
   ctx.save();ctx.translate(x,y);ctx.rotate(lean);
   if(save.glow){ctx.shadowBlur=24;ctx.shadowColor=save.color;}
   ctx.fillStyle='#0a0d12';ctx.beginPath();ctx.ellipse(0,-28,11,24,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(0,31,12,27,0,0,Math.PI*2);ctx.fill();
@@ -429,24 +499,85 @@ function drawBike(){
   ctx.fillStyle='#e9f7ff';ctx.beginPath();ctx.roundRect(-8,-24,16,16,6);ctx.fill();
   ctx.fillStyle='#11192a';ctx.beginPath();ctx.roundRect(-9,-4,18,23,7);ctx.fill();
   ctx.strokeStyle='#dff7ff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,-19);ctx.lineTo(18,-19);ctx.stroke();
-  if(keys.nitro && state.nitro>0 && state.speed>80){
+  if(keys.nitro && state.nitro>0 && state.speed>40){
     const g=ctx.createLinearGradient(0,30,0,68);g.addColorStop(0,'#fff');g.addColorStop(.3,'#00e5ff');g.addColorStop(1,'#6a3cff00');
     ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-8,26);ctx.lineTo(8,26);ctx.lineTo(0,68);ctx.fill();
   }
   ctx.restore();
 }
+
+function drawFirstPersonCockpit(){
+  if(state.camera !== 'first') return;
+  if(state.invuln > 0 && Math.floor(Date.now() / 100) % 2 === 0) return; // Invulnerability blink
+
+  const leanOffset = state.lean * 40;
+  const pitchOffset = (state.speed / 250) * 6;
+
+  ctx.save();
+  // Lowered cockpit positioning to maximize viewable road area
+  ctx.translate(W/2 + leanOffset, H + pitchOffset + 40);
+  ctx.rotate(state.lean * 0.08);
+
+  // Left & Right Handlebars
+  ctx.strokeStyle = '#151e2e'; ctx.lineWidth = 18; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-280, -70); ctx.lineTo(-100, -110); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(280, -70); ctx.lineTo(100, -110); ctx.stroke();
+
+  ctx.strokeStyle = '#2c3b54'; ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.moveTo(-280, -70); ctx.lineTo(-100, -110); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(280, -70); ctx.lineTo(100, -110); ctx.stroke();
+
+  // Rubber Grips
+  ctx.fillStyle = '#080b12';
+  ctx.beginPath(); ctx.roundRect(-300, -82, 45, 22, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(255, -82, 45, 22, 6); ctx.fill();
+
+  // Brake Levers
+  ctx.strokeStyle = '#c5d7f2'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-260, -92); ctx.lineTo(-150, -105); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(260, -92); ctx.lineTo(150, -105); ctx.stroke();
+
+  // Compact Sleek Dashboard
+  ctx.fillStyle = '#080d16'; ctx.beginPath(); ctx.roundRect(-110, -155, 220, 95, 20); ctx.fill();
+  ctx.strokeStyle = save.color; ctx.lineWidth = 3; ctx.stroke();
+
+  // Dash Screen HUD
+  ctx.fillStyle = '#03060a'; ctx.beginPath(); ctx.roundRect(-98, -145, 196, 76, 12); ctx.fill();
+
+  // Speedometer Reading
+  ctx.fillStyle = '#ffffff'; ctx.font = '900 32px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText(Math.floor(state.speed), 0, -106);
+  ctx.fillStyle = save.color; ctx.font = '800 11px system-ui';
+  ctx.fillText('KM/H • VR46', 0, -90);
+
+  // Tachometer Bar
+  const rpmRatio = Math.min(1, state.speed / 260);
+  ctx.fillStyle = '#121d2d'; ctx.fillRect(-80, -137, 160, 8);
+  const rpmGrad = ctx.createLinearGradient(-80, 0, 80, 0);
+  rpmGrad.addColorStop(0, '#00e5ff'); rpmGrad.addColorStop(0.7, '#ffc84a'); rpmGrad.addColorStop(1, '#ff3d81');
+  ctx.fillStyle = rpmGrad; ctx.fillRect(-80, -137, 160 * rpmRatio, 8);
+
+  ctx.restore();
+}
+
 function draw(){
   drawRoad();
   for(const v of traffic) drawVehicle(v);
   drawBike();
+  drawFirstPersonCockpit();
+
   for(const p of particles){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,8)}ctx.globalAlpha=1;
+  
+  // Nitro HUD Gauge
   ctx.fillStyle='#06101dcc';ctx.fillRect(18,H-82,190,50);
   ctx.fillStyle='#dcecff';ctx.font='800 12px system-ui';ctx.fillText('NITRO',30,H-57);
   ctx.fillStyle='#14233b';ctx.fillRect(78,H-67,112,12);
   const grad=ctx.createLinearGradient(78,0,190,0);grad.addColorStop(0,'#00e5ff');grad.addColorStop(1,'#8b5cff');
   ctx.fillStyle=grad;ctx.fillRect(78,H-67,112*state.nitro/100,12);
+  
   if(flash>0){ctx.fillStyle=`rgba(255,70,95,${flash*.45})`;ctx.fillRect(0,0,W,H)}
 }
+
 function loop(t){
   const dt=Math.min(.032,(t-last)/1000);last=t;update(dt);draw();requestAnimationFrame(loop);
 }
@@ -454,6 +585,11 @@ function updateHUD(){
   document.getElementById('speed').textContent=Math.floor(state.speed);
   document.getElementById('score').textContent=Math.floor(state.score);
   document.getElementById('runCoins').textContent=state.coins;
+  
+  // Lifelines Display
+  let hearts = '';
+  for(let i=0; i<3; i++) hearts += (i < state.lives) ? '❤️' : '🖤';
+  document.getElementById('lives').textContent = hearts;
 }
 function syncUI(){
   document.getElementById('wallet').textContent=save.wallet;
@@ -477,6 +613,7 @@ function syncUI(){
   document.getElementById('roadNeon').checked=save.roadNeon;
   [...document.querySelectorAll('.swatch')].forEach(s=>s.classList.toggle('sel',s.dataset.c===save.color));
 }
+
 document.addEventListener('keydown',e=>{
   const map={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'gas',KeyW:'gas',ArrowDown:'brake',KeyS:'brake',ShiftLeft:'nitro',ShiftRight:'nitro'};
   if(map[e.code]){keys[map[e.code]]=true;e.preventDefault();}
@@ -523,3 +660,14 @@ reset();syncUI();requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+
+
+      
+       
+   
+    
+
+        
+    
+  
+  
